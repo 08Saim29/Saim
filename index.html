@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NEBULA — Gesture Particle Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent: #00eaff;
+    --bg-1: #0b0620;
+    --bg-2: #1a0b3d;
+    --bg-3: #2d0f4e;
+    --panel-bg: rgba(15, 8, 35, 0.55);
+    --panel-border: rgba(255,255,255,0.12);
+    --text-main: #f2f0ff;
+    --text-dim: #b3a9d6;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html, body{
+    width:100%; height:100%;
+    overflow:hidden;
+    background: radial-gradient(ellipse at 30% 20%, var(--bg-3), var(--bg-2) 45%, var(--bg-1) 100%);
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text-main);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background:
+      radial-gradient(1.5px 1.5px at 20% 30%, rgba(255,255,255,0.55) 40%, transparent 41%),
+      radial-gradient(1.5px 1.5px at 70% 65%, rgba(255,255,255,0.4) 40%, transparent 41%),
+      radial-gradient(1px 1px at 85% 20%, rgba(255,255,255,0.5) 40%, transparent 41%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.35) 40%, transparent 41%),
+      radial-gradient(1.5px 1.5px at 55% 10%, rgba(255,255,255,0.45) 40%, transparent 41%),
+      radial-gradient(1px 1px at 10% 90%, rgba(255,255,255,0.3) 40%, transparent 41%);
+    background-size: 100% 100%;
+    opacity:0.6;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  #scene-canvas{
+    position:fixed; inset:0;
+    display:block;
+    z-index:1;
+  }
+
+  /* ---------- START SCREEN ---------- */
+  #start-screen{
+    position:fixed; inset:0;
+    z-index:30;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    background: radial-gradient(ellipse at center, rgba(45,15,78,0.35), rgba(5,3,15,0.75));
+    backdrop-filter: blur(2px);
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+  }
+  #start-screen.hidden{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+  .brand{
+    font-size: 15px;
+    letter-spacing: 6px;
+    color: var(--accent);
+    font-weight:600;
+    margin-bottom: 18px;
+    text-transform:uppercase;
+    opacity:0.9;
+  }
+  .title{
+    font-size: clamp(38px, 8vw, 84px);
+    font-weight:700;
+    letter-spacing:2px;
+    background: linear-gradient(90deg, #00eaff, #ff2fd0 50%, #ffd93d);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow: 0 0 60px rgba(120,80,255,0.35);
+    line-height:1.05;
+  }
+  .subtitle{
+    margin-top:14px;
+    font-size: clamp(13px, 2vw, 17px);
+    color: var(--text-dim);
+    letter-spacing:0.5px;
+    max-width:520px;
+  }
+  #start-btn{
+    margin-top:42px;
+    padding:16px 52px;
+    font-family:inherit;
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#05030f;
+    background: linear-gradient(90deg, #00eaff, #7c5cff);
+    border:none;
+    border-radius:50px;
+    cursor:pointer;
+    box-shadow: 0 0 30px rgba(0,234,255,0.35), 0 8px 24px rgba(0,0,0,0.4);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  #start-btn:hover{
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 0 46px rgba(124,92,255,0.55), 0 10px 28px rgba(0,0,0,0.45);
+  }
+  #start-btn:active{ transform: translateY(0) scale(0.98); }
+  #start-btn:disabled{ opacity:0.55; cursor:wait; }
+
+  .cam-note{
+    margin-top:16px;
+    font-size:12px;
+    color: var(--text-dim);
+    opacity:0.75;
+    letter-spacing:0.3px;
+  }
+
+  /* ---------- INSTRUCTIONS PANEL ---------- */
+  #instructions{
+    position:fixed;
+    left:28px; bottom:28px;
+    z-index:31;
+    max-width: 340px;
+    background: var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:16px;
+    padding:18px 20px;
+    backdrop-filter: blur(10px);
+    text-align:left;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+  }
+  #instructions.hidden{
+    opacity:0;
+    transform: translateY(14px);
+    visibility:hidden;
+    pointer-events:none;
+  }
+  #instructions h3{
+    font-size:12px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:10px;
+    font-weight:600;
+  }
+  #instructions ul{ list-style:none; }
+  #instructions li{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    color: var(--text-main);
+    padding:4px 0;
+    line-height:1.3;
+  }
+  #instructions li span.emoji{
+    font-size:16px;
+    width:22px;
+    text-align:center;
+    flex-shrink:0;
+  }
+  #instructions li b{ color: var(--accent); font-weight:600; }
+
+  /* ---------- LOADING OVERLAY ---------- */
+  #loading-overlay{
+    position:fixed; inset:0;
+    z-index:40;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    background: rgba(5,3,15,0.88);
+    backdrop-filter: blur(4px);
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+  #loading-overlay.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+  .spinner{
+    width:46px; height:46px;
+    border-radius:50%;
+    border:3px solid rgba(255,255,255,0.15);
+    border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #loading-text{
+    font-size:13px;
+    letter-spacing:1px;
+    color: var(--text-dim);
+  }
+  #loading-error{
+    max-width:360px;
+    text-align:center;
+    font-size:13px;
+    color:#ff8a8a;
+    display:none;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:fixed;
+    top:24px; left:28px;
+    z-index:20;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    background: var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:14px;
+    padding:14px 18px;
+    backdrop-filter: blur(10px);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color: var(--text-dim);
+    opacity:0;
+    transform: translateY(-8px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    letter-spacing:0.3px;
+    min-width:168px;
+  }
+  #hud.visible{ opacity:1; transform:translateY(0); }
+  #hud .row{ display:flex; justify-content:space-between; gap:14px; }
+  #hud .row .val{ color:var(--text-main); font-weight:500; }
+  #hud .brandmark{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:3px;
+    color:var(--accent);
+    margin-bottom:4px;
+  }
+
+  /* ---------- CAMERA PREVIEW ---------- */
+  #cam-wrap{
+    position:fixed;
+    right:24px; bottom:24px;
+    z-index:20;
+    width:220px; height:165px;
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid rgba(0,234,255,0.35);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 12px 34px rgba(0,0,0,0.5), 0 0 26px rgba(0,234,255,0.18);
+    opacity:0;
+    transform: translateY(10px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    background:#000;
+  }
+  #cam-wrap.visible{ opacity:1; transform:translateY(0); }
+  #cam-wrap .label{
+    position:absolute;
+    top:6px; left:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    letter-spacing:1.5px;
+    color:#fff;
+    background:rgba(0,0,0,0.4);
+    padding:3px 7px;
+    border-radius:20px;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  #cam-wrap .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:#ff4d5e;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+  #cam-canvas{
+    width:100%; height:100%;
+    object-fit:cover;
+    transform: scaleX(-1);
+  }
+  video#input-video{
+    position:fixed;
+    top:-9999px;
+    left:-9999px;
+    width:2px;
+    height:2px;
+    opacity:0.01;
+    pointer-events:none;
+  }
+
+  /* ---------- INFO TOGGLE ---------- */
+  #info-toggle{
+    position:fixed;
+    left:28px; bottom:28px;
+    z-index:19;
+    width:40px; height:40px;
+    border-radius:50%;
+    background: var(--panel-bg);
+    border:1px solid var(--panel-border);
+    backdrop-filter: blur(10px);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+    cursor:pointer;
+    opacity:0;
+    transform: scale(0.8);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    color: var(--accent);
+  }
+  #info-toggle.visible{ opacity:1; transform:scale(1); }
+  #info-toggle:hover{ background: rgba(0,234,255,0.12); }
+
+  #instructions.mini{
+    left:78px;
+    bottom:28px;
+  }
+
+  @media (max-width: 640px){
+    #cam-wrap{ width:150px; height:112px; right:14px; bottom:14px; }
+    #hud{ top:14px; left:14px; padding:10px 14px; font-size:10.5px; min-width:140px; }
+    #instructions{ left:14px; bottom:14px; max-width: 78vw; padding:14px 16px; }
+    #instructions.mini{ left:66px; }
+    #info-toggle{ left:14px; bottom:14px; width:36px; height:36px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene-canvas"></canvas>
+
+<!-- Hidden video element feeding MediaPipe -->
+<video id="input-video" playsinline autoplay muted webkit-playsinline></video>
+
+<!-- Camera preview with hand overlay -->
+<div id="cam-wrap">
+  <div class="label"><span class="dot"></span>LIVE TRACKING</div>
+  <canvas id="cam-canvas"></canvas>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="brandmark">NEBULA</div>
+  <div class="row"><span>Shape</span><span class="val" id="hud-shape">Sphere</span></div>
+  <div class="row"><span>Color</span><span class="val" id="hud-color">Cyan</span></div>
+  <div class="row"><span>Zoom</span><span class="val" id="hud-zoom">1.00x</span></div>
+  <div class="row"><span>Particles</span><span class="val" id="hud-particles">0</span></div>
+</div>
+
+<!-- Instructions panel -->
+<div id="instructions">
+  <h3>Gesture Guide</h3>
+  <ul>
+    <li><span class="emoji">🤏</span> Pinch fingers — <b>Zoom</b> in / out</li>
+    <li><span class="emoji">☝️</span> 1 Finger — <b>Sphere</b></li>
+    <li><span class="emoji">✌️</span> 2 Fingers — <b>Cube</b></li>
+    <li><span class="emoji">🤟</span> 3 Fingers — <b>Torus</b></li>
+    <li><span class="emoji">🖖</span> 4 Fingers — <b>Galaxy</b></li>
+    <li><span class="emoji">🖐️</span> Open Palm — <b>Heart</b></li>
+    <li><span class="emoji">👋</span> Move Hand — <b>Rotate</b> the scene</li>
+    <li><span class="emoji">🌈</span> 2nd Hand (1–4 fingers) — <b>Change Color</b></li>
+  </ul>
+</div>
+
+<button id="info-toggle" title="Show gesture guide">ⓘ</button>
+
+<!-- Start Screen -->
+<div id="start-screen">
+  <div class="brand">Gesture Particle Studio</div>
+  <div class="title">NEBULA</div>
+  <p class="subtitle">Sculpt living constellations of light with nothing but your hands. Real-time hand tracking, thousands of particles, zero touch required.</p>
+  <button id="start-btn">Start Experience</button>
+  <p class="cam-note">Camera access is required for hand-gesture tracking. Nothing is recorded or uploaded.</p>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div id="loading-text">Requesting camera access…</div>
+  <div id="loading-error"></div>
+</div>
+
+<!-- ================= LIBRARIES ================= -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     CONFIG
+  ========================================================= */
+  const MAX_PARTICLES = 9000;
+  const MIN_PARTICLES = 2200;
+  let   currentParticleCount = MAX_PARTICLES;
+
+  const SHAPE_NAMES = ["Sphere","Cube","Torus","Galaxy","Heart"];
+  const COLOR_NAMES = ["Cyan","Magenta","Gold","Neon Green"];
+  const COLOR_HEX   = [0x00eaff, 0xff2fd0, 0xffd93d, 0x39ff88];
+
+  const MORPH_SPEED   = 0.045;
+  const COLOR_SPEED   = 0.05;
+  const ROT_SPEED     = 0.06;
+  const ZOOM_SPEED    = 0.08;
+  const WOBBLE_AMP    = 1.6;
+  const WOBBLE_SPEED  = 0.6;
+
+  /* =========================================================
+     HELPERS
+  ========================================================= */
+  const clamp = (v,min,max)=> Math.max(min, Math.min(max, v));
+  const lerp  = (a,b,t)=> a + (b-a)*t;
+  const mapRange = (v, inMin, inMax, outMin, outMax) => {
+    const t = clamp((v-inMin)/(inMax-inMin), 0, 1);
+    return outMin + (outMax-outMin)*t;
+  };
+  const dist2D = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+  /* =========================================================
+     DOM REFS
+  ========================================================= */
+  const startScreen   = document.getElementById('start-screen');
+  const startBtn       = document.getElementById('start-btn');
+  const instructions   = document.getElementById('instructions');
+  const infoToggle     = document.getElementById('info-toggle');
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const loadingText    = document.getElementById('loading-text');
+  const loadingError   = document.getElementById('loading-error');
+  const hud             = document.getElementById('hud');
+  const hudShape        = document.getElementById('hud-shape');
+  const hudColor        = document.getElementById('hud-color');
+  const hudZoom          = document.getElementById('hud-zoom');
+  const hudParticles     = document.getElementById('hud-particles');
+  const camWrap          = document.getElementById('cam-wrap');
+  const camCanvas        = document.getElementById('cam-canvas');
+  const camCtx           = camCanvas.getContext('2d');
+  const videoEl          = document.getElementById('input-video');
+  const sceneCanvas      = document.getElementById('scene-canvas');
+
+  /* =========================================================
+     THREE.JS SCENE SETUP
+  ========================================================= */
+  const renderer = new THREE.WebGLRenderer({ canvas: sceneCanvas, antialias:true, alpha:true, powerPreference:'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera3D = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 2000);
+  camera3D.position.set(0, 0, 420);
+
+  const particleGroup = new THREE.Group();
+  scene.add(particleGroup);
+
+  // faint ambient starfield backdrop for depth
+  (function createStarfield(){
+    const starCount = 700;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount*3);
+    for(let i=0;i<starCount;i++){
+      const r = 700 + Math.random()*500;
+      const theta = Math.random()*Math.PI*2;
+      const phi = Math.acos((Math.random()*2)-1);
+      starPos[i*3]   = r*Math.sin(phi)*Math.cos(theta);
+      starPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+      starPos[i*3+2] = r*Math.cos(phi);
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
+    const starMat = new THREE.PointsMaterial({ color:0xffffff, size:1.4, transparent:true, opacity:0.35, sizeAttenuation:true });
+    const stars = new THREE.Points(starGeo, starMat);
+    scene.add(stars);
+  })();
+
+  // soft circular glow texture for particles
+  function makeParticleTexture(){
+    const size = 64;
+    const cvs = document.createElement('canvas');
+    cvs.width = size; cvs.height = size;
+    const ctx = cvs.getContext('2d');
+    const grad = ctx.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.7)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,size,size);
+    const tex = new THREE.CanvasTexture(cvs);
+    return tex;
+  }
+  const particleTexture = makeParticleTexture();
+
+  /* =========================================================
+     SHAPE GENERATORS  (each returns [x,y,z])
+  ========================================================= */
+  function genSphere(i, N){
+    const R = 130;
+    const y = 1 - (i/(N-1))*2;
+    const radiusAtY = Math.sqrt(Math.max(0,1-y*y));
+    const theta = Math.PI * (3 - Math.sqrt(5)) * i; // golden angle
+    const x = Math.cos(theta)*radiusAtY;
+    const z = Math.sin(theta)*radiusAtY;
+    return [x*R, y*R, z*R];
+  }
+
+  function genCube(i, N){
+    const S = 105;
+    const perFace = Math.ceil(N/6);
+    const face = Math.min(5, Math.floor(i/perFace));
+    const u = Math.random()*2-1, v = Math.random()*2-1;
+    let x=0,y=0,z=0;
+    switch(face){
+      case 0: x=u*S; y=v*S; z=S;  break;
+      case 1: x=u*S; y=v*S; z=-S; break;
+      case 2: x=S;   y=u*S; z=v*S; break;
+      case 3: x=-S;  y=u*S; z=v*S; break;
+      case 4: x=u*S; y=S;   z=v*S; break;
+      default:x=u*S; y=-S;  z=v*S; break;
+    }
+    return [x,y,z];
+  }
+
+  function genTorus(i, N){
+    const R = 105, r = 42;
+    const u = Math.random()*Math.PI*2;
+    const v = Math.random()*Math.PI*2;
+    const x = (R + r*Math.cos(v)) * Math.cos(u);
+    const y = (R + r*Math.cos(v)) * Math.sin(u);
+    const z = r*Math.sin(v);
+    return [x, z, y]; // oriented to face camera nicely
+  }
+
+  function genGalaxy(i, N){
+    const arms = 3;
+    const arm = i % arms;
+    const t = i / N;
+    const radius = t * 165;
+    const angle = t*Math.PI*6.2 + arm*(Math.PI*2/arms) + (Math.random()-0.5)*0.35;
+    const x = Math.cos(angle)*radius + (Math.random()-0.5)*9;
+    const z = Math.sin(angle)*radius + (Math.random()-0.5)*9;
+    const y = (Math.random()-0.5) * 9 * (1 - t*0.5);
+    return [x, y, z];
+  }
+
+  function genHeart(i, N){
+    const t = Math.random()*Math.PI*2;
+    const scale = 5.1;
+    const x = scale * 16*Math.pow(Math.sin(t),3);
+    const y = scale * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t));
+    const z = (Math.random()-0.5) * 34;
+    const jitter = 0.86 + Math.random()*0.14;
+    return [x*jitter, y*jitter, z];
+  }
+
+  const SHAPE_GENERATORS = [genSphere, genCube, genTorus, genGalaxy, genHeart];
+
+  /* =========================================================
+     PARTICLE BUFFERS
+  ========================================================= */
+  const basePositions = new Float32Array(MAX_PARTICLES*3);   // morph-tracking positions
+  const displayPositions = new Float32Array(MAX_PARTICLES*3); // base + wobble (rendered)
+  const currentColors = new Float32Array(MAX_PARTICLES*3);
+  const wobblePhase   = new Float32Array(MAX_PARTICLES);
+
+  const shapeTargets = SHAPE_GENERATORS.map(fn=>{
+    const arr = new Float32Array(MAX_PARTICLES*3);
+    for(let i=0;i<MAX_PARTICLES;i++){
+      const [x,y,z] = fn(i, MAX_PARTICLES);
+      arr[i*3]=x; arr[i*3+1]=y; arr[i*3+2]=z;
+    }
+    return arr;
+  });
+
+  // initialize base = sphere, colors = cyan, random phases
+  for(let i=0;i<MAX_PARTICLES;i++){
+    basePositions[i*3]   = shapeTargets[0][i*3];
+    basePositions[i*3+1] = shapeTargets[0][i*3+1];
+    basePositions[i*3+2] = shapeTargets[0][i*3+2];
+    displayPositions[i*3]   = basePositions[i*3];
+    displayPositions[i*3+1] = basePositions[i*3+1];
+    displayPositions[i*3+2] = basePositions[i*3+2];
+    wobblePhase[i] = Math.random()*Math.PI*2;
+    const c = new THREE.Color(COLOR_HEX[0]);
+    currentColors[i*3]=c.r; currentColors[i*3+1]=c.g; currentColors[i*3+2]=c.b;
+  }
+
+  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry.setAttribute('position', new THREE.BufferAttribute(displayPositions, 3).setUsage(THREE.DynamicDrawUsage));
+  particleGeometry.setAttribute('color', new THREE.BufferAttribute(currentColors, 3).setUsage(THREE.DynamicDrawUsage));
+  particleGeometry.setDrawRange(0, currentParticleCount);
+
+  const particleMaterial = new THREE.PointsMaterial({
+    size: 2.6,
+    map: particleTexture,
+    vertexColors: true,
+    transparent: true,
+    alphaTest: 0.01,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true
+  });
+
+  const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+  particleGroup.add(particleSystem);
+
+  hudParticles.textContent = currentParticleCount.toLocaleString();
+
+  /* =========================================================
+     STATE (gesture-driven targets, smoothed)
+  ========================================================= */
+  const state = {
+    shapeIndex: 0,
+    targetShapeIndex: 0,
+    colorIndex: 0,
+    targetColorIndex: 0,
+    zoom: 1,
+    targetZoom: 1,
+    rotY: 0, targetRotY: 0,
+    rotX: 0, targetRotX: 0,
+    autoRotate: 0,
+    handsDetected: false
+  };
+
+  let currentColorObj = new THREE.Color(COLOR_HEX[0]);
+  let targetColorObj  = new THREE.Color(COLOR_HEX[0]);
+
+  /* =========================================================
+     HAND GESTURE LOGIC
+  ========================================================= */
+  function isThumbExtended(lm){
+    const ref = lm[17]; // pinky MCP as stable palm reference
+    const tipDist = dist2D(lm[4], ref);
+    const ipDist  = dist2D(lm[3], ref);
+    return tipDist > ipDist * 1.05;
+  }
+
+  function countFingers(lm){
+    let c = 0;
+    if (isThumbExtended(lm)) c++;
+    const pairs = [[8,6],[12,10],[16,14],[20,18]];
+    for(const [tip,pip] of pairs){
+      if (lm[tip].y < lm[pip].y - 0.02) c++;
+    }
+    return c;
+  }
+
+  function onResults(results){
+    // draw camera preview + hand landmarks
+    camCtx.save();
+    camCtx.clearRect(0,0,camCanvas.width, camCanvas.height);
+    camCtx.drawImage(results.image, 0, 0, camCanvas.width, camCanvas.height);
+
+    const hands = results.multiHandLandmarks || [];
+    state.handsDetected = hands.length > 0;
+
+    if (hands.length > 0){
+      const primary = hands[0];
+
+      if (window.drawConnectors){
+        window.drawConnectors(camCtx, primary, window.HAND_CONNECTIONS, { color: '#00eaff', lineWidth: 2 });
+        window.drawLandmarks(camCtx, primary, { color: '#ff2fd0', lineWidth: 1, radius: 2.2 });
+      }
+
+      // ---- shape selection from finger count ----
+      const fingerCount = countFingers(primary);
+      if (fingerCount >= 1 && fingerCount <= 5){
+        state.targetShapeIndex = fingerCount - 1;
+      }
+
+      // ---- pinch => zoom ----
+      const pinchDist = dist2D(primary[4], primary[8]);
+      state.targetZoom = mapRange(pinchDist, 0.025, 0.30, 0.55, 2.3);
+
+      // ---- palm position => rotation ----
+      const palm = primary[9];
+      state.targetRotY = (0.5 - palm.x) * Math.PI * 1.3;
+      state.targetRotX = (palm.y - 0.5) * Math.PI * 0.6;
+
+      // ---- second hand => color ----
+      if (hands.length > 1){
+        const secondary = hands[1];
+        window.drawConnectors && window.drawConnectors(camCtx, secondary, window.HAND_CONNECTIONS, { color:'#ffd93d', lineWidth:2 });
+        window.drawLandmarks && window.drawLandmarks(camCtx, secondary, { color:'#39ff88', lineWidth:1, radius:2.2 });
+        const c2 = countFingers(secondary);
+        if (c2 >= 1 && c2 <= 4){
+          state.targetColorIndex = c2 - 1;
+        }
+      }
+    }
+    camCtx.restore();
+  }
+
+  /* =========================================================
+     MEDIAPIPE HANDS + CAMERA
+  ========================================================= */
+  let mediaStream = null;
+  let frameLoopId = null;
+
+  async function initHandTracking(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      throw new Error("Camera API unavailable — this page must be opened over https:// (or on localhost), not as a local file.");
+    }
+
+    // Request the camera stream directly. This is what actually
+    // triggers the browser's permission prompt — previously the
+    // page relied entirely on MediaPipe's internal Camera helper,
+    // which calls getUserMedia itself and can fail silently
+    // before the prompt ever appears.
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user",
+        width:  { ideal: 320 },
+        height: { ideal: 240 }
+      },
+      audio: false
+    });
+
+    videoEl.srcObject = mediaStream;
+    await new Promise((resolve, reject) => {
+      videoEl.onloadedmetadata = () => resolve();
+      videoEl.onerror = () => reject(new Error("Could not read the video stream from the camera."));
+    });
+    await videoEl.play();
+
+    camCanvas.width = 220;
+    camCanvas.height = 165;
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6
+    });
+    hands.onResults(onResults);
+
+    // Manually pump frames into MediaPipe instead of relying on
+    // the Camera helper class — keeps us in full control of the
+    // stream we already obtained above.
+    async function frameLoop(){
+      if (videoEl.readyState >= 2){
+        await hands.send({ image: videoEl });
+      }
+      frameLoopId = requestAnimationFrame(frameLoop);
+    }
+    frameLoop();
+  }
+
+  /* =========================================================
+     ANIMATION LOOP
+  ========================================================= */
+  const clock = new THREE.Clock();
+  let frameCount = 0;
+  let fpsAccum = 0;
+  let fpsSamples = 0;
+
+  function updateHUD(){
+    hudShape.textContent = SHAPE_NAMES[state.targetShapeIndex];
+    hudColor.textContent = COLOR_NAMES[state.targetColorIndex];
+    hudZoom.textContent = state.zoom.toFixed(2) + "x";
+    hudParticles.textContent = currentParticleCount.toLocaleString();
+  }
+
+  function adaptQuality(dt){
+    fpsAccum += dt; fpsSamples++;
+    if (fpsSamples >= 60){
+      const avgFrameTime = fpsAccum / fpsSamples; // seconds/frame
+      const fps = 1/avgFrameTime;
+      if (fps < 30 && currentParticleCount > MIN_PARTICLES){
+        currentParticleCount = Math.max(MIN_PARTICLES, currentParticleCount - 1200);
+        particleGeometry.setDrawRange(0, currentParticleCount);
+      } else if (fps > 50 && currentParticleCount < MAX_PARTICLES){
+        currentParticleCount = Math.min(MAX_PARTICLES, currentParticleCount + 800);
+        particleGeometry.setDrawRange(0, currentParticleCount);
+      }
+      fpsAccum = 0; fpsSamples = 0;
+    }
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const t = clock.elapsedTime;
+
+    adaptQuality(dt);
+
+    // smooth transitions of gesture targets
+    state.shapeIndex = state.targetShapeIndex; // discrete, but morph is smoothed via base lerp below
+    state.colorIndex = state.targetColorIndex;
+    state.zoom  = lerp(state.zoom, state.targetZoom, ZOOM_SPEED);
+    state.rotY  = lerp(state.rotY, state.targetRotY, ROT_SPEED);
+    state.rotX  = lerp(state.rotX, state.targetRotX, ROT_SPEED);
+
+    if (!state.handsDetected){
+      state.autoRotate += dt*0.12; // gentle idle rotation when no hands
+    }
+
+    targetColorObj.setHex(COLOR_HEX[state.colorIndex]);
+    currentColorObj.lerp(targetColorObj, COLOR_SPEED);
+
+    const target = shapeTargets[state.shapeIndex];
+    const posAttr = particleGeometry.attributes.position;
+    const colAttr = particleGeometry.attributes.color;
+
+    for(let i=0;i<currentParticleCount;i++){
+      const ix = i*3, iy = i*3+1, iz = i*3+2;
+
+      basePositions[ix] = lerp(basePositions[ix], target[ix], MORPH_SPEED);
+      basePositions[iy] = lerp(basePositions[iy], target[iy], MORPH_SPEED);
+      basePositions[iz] = lerp(basePositions[iz], target[iz], MORPH_SPEED);
+
+      const wob = Math.sin(t*WOBBLE_SPEED + wobblePhase[i]) * WOBBLE_AMP;
+
+      displayPositions[ix] = basePositions[ix] + wob;
+      displayPositions[iy] = basePositions[iy] + wob*0.6;
+      displayPositions[iz] = basePositions[iz] + wob*0.6;
+
+      currentColors[ix] = lerp(currentColors[ix], currentColorObj.r, COLOR_SPEED);
+      currentColors[iy] = lerp(currentColors[iy], currentColorObj.g, COLOR_SPEED);
+      currentColors[iz] = lerp(currentColors[iz], currentColorObj.b, COLOR_SPEED);
+    }
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+
+    particleGroup.rotation.y = state.rotY + state.autoRotate;
+    particleGroup.rotation.x = state.rotX;
+    particleGroup.scale.setScalar(state.zoom);
+
+    frameCount++;
+    if (frameCount % 6 === 0) updateHUD();
+
+    renderer.render(scene, camera3D);
+  }
+
+  /* =========================================================
+     RESIZE
+  ========================================================= */
+  window.addEventListener('resize', ()=>{
+    camera3D.aspect = window.innerWidth/window.innerHeight;
+    camera3D.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  /* =========================================================
+     UI WIRING
+  ========================================================= */
+  infoToggle.addEventListener('click', ()=>{
+    instructions.classList.toggle('hidden');
+  });
+
+  startBtn.addEventListener('click', async ()=>{
+    startBtn.disabled = true;
+    startBtn.textContent = "Starting…";
+    loadingOverlay.classList.remove('hidden');
+    loadingText.textContent = "Requesting camera access…";
+
+    try{
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        throw new Error("Camera API unavailable — this page must be opened over https:// (or localhost), not as a local file.");
+      }
+
+      const timeout = (ms) => new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Camera took too long to start. Check that camera permission is allowed for this site, then try again.")), ms)
+      );
+      await Promise.race([ initHandTracking(), timeout(15000) ]);
+
+      loadingText.textContent = "Calibrating hand tracking…";
+      // give the model a brief moment to produce first results
+      setTimeout(()=>{
+        loadingOverlay.classList.add('hidden');
+        startScreen.classList.add('hidden');
+        instructions.classList.add('hidden');
+        instructions.classList.add('mini');
+        infoToggle.classList.add('visible');
+        hud.classList.add('visible');
+        camWrap.classList.add('visible');
+      }, 900);
+
+    } catch(err){
+      console.error(err);
+      loadingText.textContent = "";
+      loadingError.style.display = 'block';
+
+      const name = err && err.name;
+      let msg = "Camera access failed. Please allow camera permissions and reload the page to try again.";
+      if (name === "NotAllowedError" || name === "PermissionDeniedError"){
+        msg = "Camera access was denied. Click the camera icon in your browser's address bar, allow access, then reload the page.";
+      } else if (name === "NotFoundError" || name === "DevicesNotFoundError"){
+        msg = "No camera was found on this device.";
+      } else if (name === "NotReadableError" || name === "TrackStartError"){
+        msg = "Your camera is already in use by another app. Close it and try again.";
+      } else if (name === "OverconstrainedError"){
+        msg = "Your camera doesn't support the requested settings.";
+      } else if (name === "SecurityError"){
+        msg = "Camera access is blocked because this page isn't loaded over HTTPS.";
+      } else if (err && err.message){
+        msg = err.message;
+      }
+      loadingError.textContent = msg;
+
+      if (mediaStream){
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+
+      startBtn.disabled = false;
+      startBtn.textContent = "Try Again";
+    }
+  });
+
+  animate();
+
+})();
+</script>
+</body>
+</html>
